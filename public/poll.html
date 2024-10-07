@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poll Results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sixtyfour+Convergence&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+      font-family: "Sixtyfour Convergence", sans-serif;
+      transition-duration: 300ms;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #0f172a;
+      color: white;
+      padding: 8px;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    main>h1 {
+      font-weight: 800;
+      /* -webkit-text-stroke: 1.5px cyan;
+      -webkit-text-fill-color: transparent; */
+      color: aqua;
+      text-shadow: 0 0 8px pink;
+      text-align: center;
+      user-select: none;
+      margin: 32px 0;
+      text-transform: uppercase;
+      border-bottom: 1px solid aqua;
+    }
+
+    #options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    ul li {
+      text-transform: capitalize;
+      list-style: none;
+      user-select: none;
+      cursor: pointer;
+      width: 100%;
+      border: 1px solid transparent;
+      padding: 8px;
+      max-width: 100% !important;
+      min-width: fit-content;
+    }
+
+    ul li i {
+      padding: 0 6px 0 0;
+    }
+
+    ul li:hover {
+      color: pink;
+      background: black;
+      border-left: 1px solid pink;
+    }
+
+    .lins:nth-child(3n) {
+      background: linear-gradient(45deg, black, red)
+    }
+    .lins:nth-child(3n+1) {
+      background: linear-gradient(45deg, black, blue)
+    }
+    .lins:nth-child(3n+2) {
+      background: linear-gradient(45deg, black, pink)
+    }
+
+    #url {
+      color:pink;
+      text-align: center;
+      padding: 2px 4px;
+      margin: 4px auto;
+      font-size: 0.8rem;
+    }
+
+    footer {
+      display: grid;
+      place-items: center;
+    }
+
+    footer:hover {
+      color: pink;
+      cursor: pointer;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1></h1>
+    <ul id="options"></ul>
+  </main>
+  <div id="url"></div>
+  <footer><a href="/"><i class="fa-solid fa-house-chimney"></i></a></footer>
+  <script>
+    const id = window.location.pathname.replaceAll('/', '')
+    console.log(id)
+    const currUrl = window.location.href
+    const urlDiv = document.getElementById('url')
+    urlDiv.innerText = currUrl
+    const question = document.querySelector('main > h1')
+    const optionsList = document.querySelector('ul')
+    let optionsFromServer = []
+    async function onLoad() {
+      const idsRes = await fetch('/ids')
+      const { ids } = await idsRes.json()
+      if (!ids.includes(id)) {
+        window.location.href = "/"
+      }
+
+      const res = await fetch('/data/' + id)
+      const { data } = await res.json()
+      // console.log(data)
+      optionsFromServer = data.options
+      // Add the question from the data adding a ? - if needed
+      question.innerText = data.question + (data.question.includes('?') ? '' : '?')
+
+      let newInnerListHTML = ''
+      Object.keys(data.options).forEach((option, index) => {
+        newInnerListHTML += `<li id="${option}"><i class="fa-solid fa-wand-sparkles"></i>${option}</li>`
+      })
+      optionsList.innerHTML = newInnerListHTML
+
+      const optionsLi = document.querySelectorAll('li')
+      optionsLi.forEach(option => {
+        option.addEventListener('click', getPollCount)
+      })
+    }
+    onLoad()
+
+    async function getPollCount(index) {
+      const selected = index.target.id //send to server
+      const maxVotes = Math.max(...Object.values(optionsFromServer))
+
+      const optionsLi = document.querySelectorAll('li')
+      optionsLi.forEach(val => {
+        const option = val.id //send to server
+        val.removeEventListener('click', getPollCount)
+
+        val.classList.add('lins')
+        val.style.color = "red"
+        if (maxVotes !== 0) {
+          if (selected === option) {
+             val.style.width = optionsFromServer[option] === 0 ? '5%' : `
+            ${((optionsFromServer[option] + 1) / maxVotes) * 100}%`
+          } else {
+            val.style.width = optionsFromServer[option] === 0 ? '5%' : `
+            ${(optionsFromServer[option] / maxVotes) * 100}%`
+          }
+
+        } else {
+          if (selected === option) {
+             val.style.width = '100%'
+          } else {
+            val.style.width = '0%'
+          }
+        }
+      })
+
+       //send result to server
+       const res = await fetch('/vote', {
+        method: 'POST',
+        headers: {
+          'Content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          id,
+          vote: selected
+        })
+      })
+    }
+
+  </script>
+</body>
+
+</html>

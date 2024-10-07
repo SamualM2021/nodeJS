@@ -1,0 +1,21 @@
+###
+GET http://localhost:3000/api/tasks
+
+###
+POST http://localhost:3000/api/task
+Content-Type: application/json
+
+{
+  "task": "Do Taxes"
+}
+
+###
+PATCH http://localhost:3000/api/task/2
+Content-Type: application/json
+
+{
+  "task": "Run a Marathon"
+}
+
+###
+DELETE http://localhost:3000/api/task/2
